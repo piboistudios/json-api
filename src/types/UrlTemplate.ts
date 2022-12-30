@@ -1,4 +1,4 @@
-import templating = require("url-template");
+const templating = require('./templating')
 
 // A url template is simply a unary function that returns a URL.
 // However, it can also have a string representation as an RFC 6570 template,
@@ -14,7 +14,7 @@ export type UrlTemplate = {
 
 export function fromRFC6570(template: string) {
   // tslint:disable-next-line:no-unbound-method
-  const fn = templating.parse(template).expand as UrlTemplate;
+  const fn = (templating as any)(template).expand as UrlTemplate;
   fn[RFC6570String] = template;
 
   return fn;

@@ -49,10 +49,10 @@ const isPoint = R.allPass([
   R.all(it => Number(it) === it)
 ]);
 
-export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> {
+export default class MongooseAdapter implements Adapter<any> {
   // Workaround for https://github.com/Microsoft/TypeScript/issues/3841.
   // Doing this makes our implements declaration work.
-  "constructor": typeof MongooseAdapter;
+  // "constructor": typeof MongooseAdapter;
 
   // Some precomputed name mappings that we use throughout.
   // Note: a type name here can be a subtype (in the sense of Query.type,
@@ -66,12 +66,12 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
   constructor(
     protected models: { [modelName: string]: Model<any> } = (mongoose as any).models,
     protected toTypeName: (modelName: string) => string = getTypeName,
-    protected idGenerator?: ((doc: Document) => mongodb.ObjectID)
+    protected idGenerator?: ((doc: Document) => mongodb.ObjectId)
   ) {
     this.typeNamesToModelNames = {};
     this.modelNamesToTypeNames = {};
 
-    for(const modelName of Object.keys(models)) {
+    for (const modelName of Object.keys(models)) {
       const typeName = toTypeName(modelName);
       this.typeNamesToModelNames[typeName] = modelName;
       this.modelNamesToTypeNames[modelName] = typeName;
@@ -84,7 +84,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
   }
 
   docsToResourceData(docs: null | Document | Document[], isPlural: boolean, fields?: object) {
-    return this.constructor.docsToResourceData(
+    return (this.constructor as any).docsToResourceData(
       this.models,
       this.modelNamesToTypeNames,
       docs,
@@ -118,7 +118,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const mongofiedFilters = util.toMongoCriteria(filters);
     const model = this.getModel(type);
 
-    this.constructor.assertIdsValid(filters, singular);
+    (this.constructor as any).assertIdsValid(filters, singular);
 
     const isPaginating =
       mode !== "findOne" &&
@@ -139,21 +139,21 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       : Promise.resolve(undefined);
 
     // do sorting
-    if(Array.isArray(sorts)) {
+    if (Array.isArray(sorts)) {
       const geoDistanceSort = sorts.find((it): it is ExpressionSort => {
         const exp = (it as ExpressionSort).expression;
         return exp && exp.operator === 'geoDistance';
       });
 
-      if(geoDistanceSort) {
-        if(sorts.length !== 1) {
+      if (geoDistanceSort) {
+        if (sorts.length !== 1) {
           throw Errors.invalidQueryParamValue({
             detail: `Cannot combine geoDistance sorts with other sorts.`,
             source: { parameter: "sort" }
           });
         }
 
-        if(geoDistanceSort.direction !== "ASC") {
+        if (geoDistanceSort.direction !== "ASC") {
           throw Errors.invalidQueryParamValue({
             detail: `Cannot sort by descending geoDistance; only ascending.`,
             source: { parameter: "sort" }
@@ -164,19 +164,19 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
         // centered on the same point as the geoDistance sort, we remove the
         // filter and instead set maxDistance on the near to its radius.
         // Also, get back locs and put them in meta.
-        queryBuilder.near(geoDistanceSort.expression.args[0].value, {
-          center: {
-            type: "Point", coordinates: geoDistanceSort.expression.args[1]
-          },
-          maxDistance: 4503599627370496,
-          spherical: true
-        })
+        // queryBuilder.near(geoDistanceSort.expression.args[0].value, {
+        //   center: {
+        //     type: "Point", coordinates: geoDistanceSort.expression.args[1]
+        //   },
+        //   maxDistance: 4503599627370496,
+        //   spherical: true
+        // })
       }
 
       else {
         queryBuilder.sort(
           sorts.map(it => {
-            if(!("field" in it)) {
+            if (!("field" in it)) {
               throw new Error("Got unsupported expression sort field; shouldn't happen.");
             }
 
@@ -186,11 +186,11 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       }
     }
 
-    if(offset) {
+    if (offset) {
       queryBuilder.skip(offset);
     }
 
-    if(limit) {
+    if (limit) {
       queryBuilder.limit(limit);
     }
 
@@ -213,19 +213,19 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
 
     // support includes, but only a level deep for now (recursive includes,
     // especially if done in an efficient way query wise, are a pain in the ass).
-    if(includePaths && includePaths.length > 0) {
+    if (includePaths && includePaths.length > 0) {
       const populatedPaths: string[] = [];
       const refPaths = getReferencePaths(model);
 
       includePaths.map((it) => it.split(".")).forEach((pathParts) => {
         // first, check that the include path is valid.
-        if(!refPaths.includes(pathParts[0])) {
+        if (!refPaths.includes(pathParts[0])) {
           throw Errors.invalidIncludePath({
             detail: `Resources of type "${type}" don't have a(n) "${pathParts[0]}" relationship.`
           });
         }
 
-        if(pathParts.length > 1) {
+        if (pathParts.length > 1) {
           throw Errors.unsupportedIncludePath({
             detail: `Multi-level include paths like ${pathParts.join('.')} aren't yet supported.`
           });
@@ -248,8 +248,8 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
                   return typeof doc[path] === 'undefined'
                     ? Data.empty as Data<ReturnedResource>
                     : Data.fromJSON(doc[path]).map(docAtPath => {
-                        return this.docToResource(docAtPath, fields) as ReturnedResource;
-                      });
+                      return this.docToResource(docAtPath, fields) as ReturnedResource;
+                    });
                 });
               })
               .values
@@ -292,7 +292,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const getSmallestSubType = (it: ResourceWithTypePath) => it.typePath[0];
     const setIdWithGenerator =
       typeof this.idGenerator === "function" &&
-        ((doc) => { doc._id = (this.idGenerator as Function)(doc); });
+      ((doc) => { doc._id = (this.idGenerator as Function)(doc); });
 
     const resourcesByParentType = partition('type', resourceData);
     const creationPromises = Object.keys(resourcesByParentType).map(type => {
@@ -304,17 +304,17 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
         const finalModel = this.getModel(getSmallestSubType(resource));
         const forbiddenKeys = getMetaKeys(finalModel);
 
-        if(forbiddenKeys.some(k => k in resource.attrs || k in resource.relationships)) {
+        if (forbiddenKeys.some(k => k in resource.attrs || k in resource.relationships)) {
           throw Errors.illegalFieldName();
         }
 
         return util.resourceToDocObject(resource, (typePath: string[]) => {
-          if(typePath.length === 1) {
+          if (typePath.length === 1) {
             return {};
           }
 
           const smallestSubType = getSmallestSubType(resource);
-          if(!discriminatorKey || !this.getModel(smallestSubType)) {
+          if (!discriminatorKey || !this.getModel(smallestSubType)) {
             throw new Error("Unexpected model name. Should've been caught earlier.");
           }
 
@@ -322,7 +322,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
         });
       });
 
-      if(setIdWithGenerator) {
+      if (setIdWithGenerator) {
         docObjects.forEach(setIdWithGenerator);
       }
 
@@ -349,7 +349,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const parentModel = this.getModel(parentType);
 
     const prefetchedDocs = patch.map(it => it.adapterExtra).values.filter(it => !!it);
-    const getOIdAsString = R.pipe<Record<"_id", mongodb.ObjectID>, mongodb.ObjectID, string>(R.prop('_id'), String);
+    const getOIdAsString: any = R.pipe<any, mongodb.ObjectId, string>(R.prop('_id'), String);
 
     const docIdsToFetch = [...setDifference(
       patch.map(R.prop('id')).values,
@@ -384,7 +384,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       const Model = this.getModel(resourceUpdate.typePath[0]);
       const versionKey = getVersionKey(Model);
 
-      if(!Model) {
+      if (!Model) {
         throw new Error("Unknown model name.");
       }
 
@@ -392,14 +392,14 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       const changeSet = util.resourceToDocObject(resourceUpdate);
 
       // Doc couldn't be found when we searched for it above.
-      if(!existingDoc) {
+      if (!existingDoc) {
         throw Errors.genericNotFound({
           detail: `First missing resource was (${resourceUpdate.type}, ${resourceUpdate.id}).`
         });
       }
 
       const forbiddenKeys = getMetaKeys(Model);
-      if(forbiddenKeys.some(k => k in changeSet)) {
+      if (forbiddenKeys.some(k => k in changeSet)) {
         throw Errors.illegalFieldName();
       }
 
@@ -411,7 +411,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       // mongo error handling function if it isn't.
       try {
         await updatedDoc.validate();
-      } catch(e) {
+      } catch (e) {
         util.errorHandler(e, { type: resourceUpdate.type, id: resourceUpdate.id });
       }
 
@@ -458,7 +458,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
             })
           }));
 
-        if(!doc) {
+        if (!doc) {
           throw Errors.occFail();
         }
 
@@ -472,7 +472,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     // criteria. Atm, though, json-api only supports delete by id(s). And, below,
     // we assume that ids are the only criteria in use, e.g., when we check the
     // length of the result set. So, throw if that assumption doesn't hold.
-    if(!query.isSimpleIdQuery()) {
+    if (!query.isSimpleIdQuery()) {
       throw new Error("Unsupported delete query");
     }
 
@@ -488,7 +488,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
 
     // Before we query to verify the subtypes, lets throw a targeted error
     // message if we can identify that any of the ids are in an invalid format.
-    this.constructor.assertIdsValid(filters, singular);
+    (this.constructor as any).assertIdsValid(filters, singular);
 
     // Ok, now, in order to verify that all ids of the right type, we need to
     // query on the root model of `Query.type` (Query.type could be a subtype);
@@ -512,7 +512,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       return this.getTypePath(doc.constructor as Model<any>).includes(throughType);
     }
 
-    if(!docsToDelete.every(R.partial(hasTypePathThrough, [type]))) {
+    if (!docsToDelete.every(R.partial(hasTypePathThrough, [type]))) {
       throw Errors.invalidResourceType();
     }
 
@@ -522,7 +522,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     // and this is a bulk delete, we just delete the ones that we did find [as
     // making the client retry is inconvenient, and the result of removing the
     // missing ids and repeating the request would be the same].)
-    if(singular && docsToDelete.size === 0) {
+    if (singular && docsToDelete.size === 0) {
       throw Errors.genericNotFound();
     }
 
@@ -574,7 +574,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const model = this.getModel(type);
     const linkageType = this.getRelationshipLinkageType(model, relationshipName);
 
-    if(!linkage.every(it => it.type === linkageType)) {
+    if (!linkage.every(it => it.type === linkageType)) {
       throw Errors.invalidLinkageType({
         detail: `All linkage must have type: ${linkageType}.`
       });
@@ -636,7 +636,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const types = Object.keys(itemsByType);
     const res = {};
 
-    for(const type of types) {
+    for (const type of types) {
       const theseItems = itemsByType[type];
       const BaseModel = this.getModel(type);
       const discriminatorKey = getDiscriminatorKey(BaseModel);
@@ -651,7 +651,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
 
       // If we know the model has no subtypes,
       // we can skip a query altogether and just return the type path.
-      if(!BaseModel.discriminators) {
+      if (!BaseModel.discriminators) {
         res[type] = theseItems.reduce((acc, item) => {
           acc[item.id] = { typePath: this.getTypePath(BaseModel) };
           return acc;
@@ -660,7 +660,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
 
       else {
         const docsPromise =
-          BaseModel.find({ _id: { $in: theseItems.map(it => it.id) }}).lean().exec();
+          BaseModel.find({ _id: { $in: theseItems.map(it => it.id) } }).lean().exec();
 
         res[type] = docsPromise.then(docs => {
           return (docs as any[]).reduce((acc, doc) => {
@@ -683,7 +683,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
 
   getModel(typeName: string) {
     const modelName = this.typeNamesToModelNames[typeName];
-    if(!modelName || !this.models[modelName]) {
+    if (!modelName || !this.models[modelName]) {
       // don't use an APIError here, since we don't want to
       // show this internals-specific method to the user.
       throw new Error(
@@ -717,7 +717,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       const refModelType = this.modelNamesToTypeNames[refModelName as string];
       const refModel = this.getModel(refModelType as string);
       return this.getTypePath(refModel).pop() as string;
-    } catch(e) {
+    } catch (e) {
       throw new Error(`Missing/invalid model name for relationship ${relName}.`);
     }
   }
@@ -749,7 +749,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
   ) {
     // if docs is an empty array and we're making a collection, that's ok.
     // but, if we're looking for a single doc, we must 404 if we didn't find any.
-    if(!docs || (!isPlural && Array.isArray(docs) && docs.length === 0)) {
+    if (!docs || (!isPlural && Array.isArray(docs) && docs.length === 0)) {
       throw Errors.genericNotFound();
     }
 
@@ -773,7 +773,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const schemaFields: FieldDocumentation[] = [];
 
     const getFieldType = (path, schemaType) => {
-      if(path === "_id") {
+      if (path === "_id") {
         return new FieldTypeDocumentation("Id", false);
       }
 
@@ -792,7 +792,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     };
 
     model.schema.eachPath((name, type) => {
-      if([versionKey, discriminatorKey].includes(name)) {
+      if ([versionKey, discriminatorKey].includes(name)) {
         return;
       }
 
@@ -809,11 +809,11 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
           typeof schemaType.options.default === "function");
 
       let defaultVal;
-      if(likelyAutoGenerated) {
+      if (likelyAutoGenerated) {
         defaultVal = "__AUTO__";
       }
 
-      else if(schemaType.options.default && typeof schemaType.options.default !== "function") {
+      else if (schemaType.options.default && typeof schemaType.options.default !== "function") {
         defaultVal = schemaType.options.default;
       }
 
@@ -828,7 +828,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
         required: !!schemaType.options.required,
         oneOf: baseTypeOptions.enum
           ? schemaType.enumValues ||
-            (schemaType.caster && schemaType.caster.enumValues)
+          (schemaType.caster && schemaType.caster.enumValues)
           : undefined,
         max: schemaType.options.max || undefined
       };
@@ -848,9 +848,9 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       );
     });
 
-    for(const virtual in virtuals) {
+    for (const virtual in virtuals) {
       // skip the id virtual, since we properly handled _id above.
-      if(virtual === "id") {
+      if (virtual === "id") {
         continue;
       }
 
@@ -886,7 +886,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
     const wordsRe = /[A-Z]([A-Z]*(?![^A-Z])|[^A-Z]*)/g;
 
     // tslint:disable-next-line no-conditional-assignment
-    while((matches = wordsRe.exec(pascalCasedString)) !== null) {
+    while ((matches = wordsRe.exec(pascalCasedString)) !== null) {
       words.push(matches[0]);
     }
 
@@ -906,19 +906,20 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
    *   is singular. Influences error message.
    */
   static assertIdsValid(filters: AndExpression, isSingular: boolean): void {
-    const idsArray = filters.args.reduce((acc, filter) => {
-      // We're only validating the RHS of binary operators where the left
-      // hand side is a reference to a field named id.
-      return isIdentifier(filter.args[0]) && filter.args[0].value === 'id'
-        ? acc.concat(filter.args[1] as any as (string | string[]))
-        : acc;
-    }, [] as string[]);
+    return;
+    // const idsArray = filters.args.reduce((acc, filter) => {
+    //   // We're only validating the RHS of binary operators where the left
+    //   // hand side is a reference to a field named id.
+    //   return isIdentifier(filter.value) && filter.field === 'id'
+    //     ? acc.concat(filter.value[1] as any as (string | string[]))
+    //     : acc;
+    // }, [] as string[]);
 
-    if(!idsArray.every(this.idIsValid)) {
-      throw isSingular
-        ? Errors.genericNotFound({ detail: "Invalid ID." })
-        : Errors.invalidId();
-    }
+    // if (!idsArray.every(this.idIsValid)) {
+    //   throw isSingular
+    //     ? Errors.genericNotFound({ detail: "Invalid ID." })
+    //     : Errors.invalidId();
+    // }
   }
 
   static idIsValid(id) {
@@ -928,17 +929,17 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
   static supportedOperators: SupportedOperators = {
     // These operators are treated with the library's built-in rules for
     // whether they're binary and how to validate their arguments.
-    "and": { },
-    "or":  { },
-    'eq':  { },
-    'neq': { },
-    'ne':  { },
-    'in':  { },
-    'nin': { },
-    'lt':  { },
-    'gt':  { },
-    'lte': { },
-    'gte': { },
+    "and": {},
+    "or": {},
+    'eq': {},
+    'neq': {},
+    'ne': {},
+    'in': {},
+    'nin': {},
+    'lt': {},
+    'gt': {},
+    'lte': {},
+    'gte': {},
 
     // Operators that other adapters really might not support, for which
     // the library doesn't have built-in arg validation logic.
@@ -948,13 +949,13 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       // so it's used for sorting and not filtering
       legalIn: ["sort"],
       finalizeArgs(operators, operator, args) {
-        if(!isIdentifier(args[0])) {
+        if (!isIdentifier(args[0])) {
           throw new SyntaxError(
             `"geoDistance" operator expects field reference as first argument.`
           );
         }
 
-        if(!isPoint(args[1])) {
+        if (!isPoint(args[1])) {
           throw new SyntaxError(
             `"geoDistance" operator expects [lng,lat] as second argument.`
           );
@@ -967,7 +968,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       arity: 2,
       legalIn: ["filter"],
       finalizeArgs(operators, operator, args) {
-        if(!isIdentifier(args[0])) {
+        if (!isIdentifier(args[0])) {
           throw new SyntaxError(
             `"geoWithin" operator expects field reference as first argument.`
           );
@@ -979,7 +980,7 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
           R.propEq("operator", "toGeoCircle")
         ]);
 
-        if(!isToGeoCircle(args[1])) {
+        if (!isToGeoCircle(args[1])) {
           throw new SyntaxError(
             `"geoDistance" operator expects a toGeoCircle as second argument.`
           );
@@ -1003,13 +1004,13 @@ export default class MongooseAdapter implements Adapter<typeof MongooseAdapter> 
       arity: 2,
       legalIn: ["filter"],
       finalizeArgs(operators, operator, args) {
-        if(!isPoint(args[0])) {
+        if (!isPoint(args[0])) {
           throw new SyntaxError(
             `"toGeoCircle" operator expects a center point as first argument.`
           );
         }
 
-        if(typeof args[1] !== 'number' || Number.isNaN(args[1])) {
+        if (typeof args[1] !== 'number' || Number.isNaN(args[1])) {
           throw new SyntaxError(
             `"toGeoCircle" operator expects a radius in meters as second argument.`
           );

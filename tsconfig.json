@@ -18,7 +18,8 @@
   "exclude": [
     "node_modules",
     "build",
-    "config"
+    "config",
+    "test"
   ],
-  "include": ["typings/index.d.ts", "src/**/*", "test/**/*"]
+  "include": ["typings/index.d.ts", "src/**/*"]
 }

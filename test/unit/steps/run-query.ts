@@ -60,7 +60,7 @@ describe("runQuery", () => {
 
     try {
       await runQuery(registry, findQuery);
-    } catch (err) {
+    } catch (err:any) {
       expect(err.detail).to.equal('Must use a smaller limit per page.');
       return;
     }

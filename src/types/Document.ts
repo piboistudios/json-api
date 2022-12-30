@@ -66,7 +66,7 @@ export default class Document {
     // Validate meta, as sometimes we pass it in straight from the JSON,
     // which isn't really the case for anything else. TODO: decide what
     // level of validation/encapsulation is appropriate, given typescript.
-    if(typeof data.meta !== 'undefined' && !isPlainObject(data.meta)) {
+    if (typeof data.meta !== 'undefined' && !isPlainObject(data.meta)) {
       throw new Error("Document `meta` must be an object.");
     }
 
@@ -85,8 +85,8 @@ export default class Document {
       return { related, self: relationship };
     };
 
-    const { data, links = {} } = (() => {
-      if(this.primary instanceof ResourceSet) {
+    const { data, links = {} } = ((() => {
+      if (this.primary instanceof ResourceSet) {
         return this.primary.toJSON(this.urlTemplates);
       }
 
@@ -96,28 +96,40 @@ export default class Document {
         );
       }
 
-      else if(this.primary) {
+      else if (this.primary) {
         return this.primary.toJSON();
       }
 
       return {};
-    })();
+    })() as any);
 
-    if(this.meta) {
+    if (this.meta) {
       res.meta = this.meta;
     }
 
-    if(!objectIsEmpty(links)) {
+    if (!objectIsEmpty(links)) {
       res.links = links;
     }
-
-    if(this.errors) {
+    // console.log("$STOPD", data);
+    if (data && data.type && this.urlTemplates[data.type].$top) {
+      
+      res.links = res.links || {};
+      Object.entries((this.urlTemplates[data.type] as any).$top).forEach(([key, value]) => {
+        if (value instanceof Function) {
+          (res.links as any)[key] = value({ data, meta: this.meta });
+        } else {
+          // if(typeof value === 'string') {
+          (res.links as any)[key] = String(value);
+        }
+      })
+    }
+    if (this.errors) {
       res.errors = this.errors.map(it => it.toJSON(this.errorUrlTemplates));
     }
 
     else {
       res.data = data;
-      if(this.included) {
+      if (this.included) {
         res.included = this.included.map(serializeResource);
       }
     }
@@ -184,20 +196,20 @@ export default class Document {
     const resourceFlatMapper = resourcesOnly
       ? flatMapper
       : async function (it: Resource, meta: TransformMeta): Promise<Data<Resource>> {
-          const relationshipNames = Object.keys(it.relationships);
-          const flatMapperWithMeta = (it2: any) => flatMapper(it2, meta);
-          const newRelationshipPromises = relationshipNames.map(k =>
-            it.relationships[k].flatMapAsync(flatMapperWithMeta)
-          );
+        const relationshipNames = Object.keys(it.relationships);
+        const flatMapperWithMeta = (it2: any) => flatMapper(it2, meta);
+        const newRelationshipPromises = relationshipNames.map(k =>
+          it.relationships[k].flatMapAsync(flatMapperWithMeta)
+        );
 
-          const newRelationships = await Promise.all(newRelationshipPromises);
-          newRelationships.forEach((newRelationship, i) => {
-            it.relationships[relationshipNames[i]] = newRelationship;
-          });
+        const newRelationships = await Promise.all(newRelationshipPromises);
+        newRelationships.forEach((newRelationship, i) => {
+          it.relationships[relationshipNames[i]] = newRelationship;
+        });
 
-          // After transforming all the relationships, transform the resource.
-          return flatMapper(it, meta);
-        };
+        // After transforming all the relationships, transform the resource.
+        return flatMapper(it, meta);
+      };
 
     // Makes sure we kick off both the primary and included promises
     // before awaiting anything, for speed.
@@ -206,13 +218,13 @@ export default class Document {
       const resourceFlatMapperWithMeta = (it2: any) =>
         (resourceFlatMapper as any)(it2, primaryMeta);
 
-      if(res.primary instanceof ResourceSet) {
+      if (res.primary instanceof ResourceSet) {
         return res.primary.flatMapAsync(resourceFlatMapperWithMeta);
       }
 
       // We don't have `.primary`, or we have linkage there,
       // and the user's asked not to tranform that, so we leave primary as-is.
-      if(!res.primary || resourcesOnly) {
+      if (!res.primary || resourcesOnly) {
         return res.primary;
       }
 
@@ -220,7 +232,7 @@ export default class Document {
       return res.primary.flatMapAsync((it2: any) => flatMapper(it2, primaryMeta));
     })();
 
-    if(res.included) {
+    if (res.included) {
       const includedMeta: TransformMeta = { section: "included" };
       const resourceFlatMapperWithMeta = (it2: any) =>
         (resourceFlatMapper as any)(it2, includedMeta);

@@ -138,11 +138,11 @@ export default class BaseStrategy {
     };
   }
 
-  protected async getParsedBodyJSON(req: ServerReq): Promise<string | undefined> {
+  protected async getParsedBodyJSON(req: any): Promise<string | undefined> {
     if(!hasBody(req)) {
       return undefined;
     }
-
+    if(req.body) return req.body;
     // Note: we always treat the encoding as utf-8 because JSON
     // is specified to always be utf-8, and letting the sender specify
     // the encoding we'll parse with (e.g., in req.headers['content-type'])

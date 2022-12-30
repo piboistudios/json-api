@@ -8,7 +8,7 @@ export type ResourceJSON = {
   attributes?: object;
   relationships?: { [name: string]: RelationshipJSON };
   meta?: object;
-  links?: { self?: string };
+  links?: { [x: string]: string };
 };
 
 // Used after an id has been assigned by the server.
@@ -67,7 +67,7 @@ export default class Resource {
   }
 
   set type(type) {
-    if(!type) {
+    if (!type) {
       throw errorWithCode("type is required", 1);
     }
 
@@ -116,7 +116,7 @@ export default class Resource {
   }
 
   set meta(meta) {
-    if(typeof meta !== "object" || meta === null) {
+    if (typeof meta !== "object" || meta === null) {
       throw errorWithCode("meta must be an object.", 2);
     }
 
@@ -128,13 +128,13 @@ export default class Resource {
   }
 
   removeAttr(attrPath: string) {
-    if(this._attrs) {
+    if (this._attrs) {
       deleteNested(attrPath, this._attrs);
     }
   }
 
   removeRelationship(relationshipPath: string) {
-    if(this._relationships) {
+    if (this._relationships) {
       deleteNested(relationshipPath, this._relationships);
     }
   }
@@ -164,15 +164,20 @@ export default class Resource {
     // use type, id, meta and attrs for template data, even though building
     // links from attr values is usually stupid (but there are cases for it).
     const templateData = { ...json };
-    const selfTemplate = urlTemplates.self;
+    // const selfTemplate = urlTemplates.self;
 
-    if(selfTemplate) {
-      json.links = {
-        self: selfTemplate(templateData)
+    const topLevelTemplates = Object.keys(urlTemplates).filter(t => ['relationship', 'related', '$top'].indexOf(t) === -1);
+    topLevelTemplates.forEach(t => {
+      if (!urlTemplates[t]) return;
+      if (!json.links) json.links = {};
+      if (!(urlTemplates[t] instanceof Function)) {
+        json.links[t] = String(urlTemplates[t]);
+        return;
       }
-    }
+      json.links[t] = (urlTemplates[t] as any)(templateData);
+    });
 
-    if(!objectIsEmpty(this.relationships)) {
+    if (!objectIsEmpty(this.relationships)) {
       json.relationships = {};
 
       Object.keys(this.relationships).forEach(path => {
@@ -206,20 +211,20 @@ export default class Resource {
  * @throws {Error} If the field group is invalid given the other fields.
  */
 function validateFieldGroup(group: object, otherFields: object, isAttributes = false) {
-  if(!isPlainObject(group)) {
+  if (!isPlainObject(group)) {
     throw errorWithCode("Attributes and relationships must be provided as an object.", 3);
   }
 
-  if("id" in group || "type" in group) {
+  if ("id" in group || "type" in group) {
     throw errorWithCode("`type` and `id` cannot be used as field names.", 4);
   }
 
   Object.keys(group).forEach(field => {
-    if(isAttributes) {
+    if (isAttributes) {
       validateComplexAttribute((group as any)[field]);
     }
 
-    if(otherFields !== undefined && typeof (otherFields as any)[field] !== "undefined") {
+    if (otherFields !== undefined && typeof (otherFields as any)[field] !== "undefined") {
       throw errorWithCode(
         "A resource can't have an attribute and a relationship with the same name.",
         5,
@@ -230,9 +235,9 @@ function validateFieldGroup(group: object, otherFields: object, isAttributes = f
 }
 
 function validateComplexAttribute(attrOrAttrPart: any) {
-  if(isPlainObject(attrOrAttrPart)) {
+  if (isPlainObject(attrOrAttrPart)) {
     const { relationships, links } = attrOrAttrPart;
-    if(typeof relationships !== "undefined" || typeof links !== "undefined") {
+    if (typeof relationships !== "undefined" || typeof links !== "undefined") {
       throw errorWithCode(
         'Complex attributes may not have "relationships" or "links" keys.',
         6
@@ -243,7 +248,7 @@ function validateComplexAttribute(attrOrAttrPart: any) {
       validateComplexAttribute(attrOrAttrPart[key]);
     });
   }
-  else if(Array.isArray(attrOrAttrPart)) {
+  else if (Array.isArray(attrOrAttrPart)) {
     attrOrAttrPart.forEach(validateComplexAttribute);
   }
 }

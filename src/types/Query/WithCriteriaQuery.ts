@@ -41,7 +41,7 @@ export default class WithCriteriaQuery extends Query {
       );
     }
 
-    this.query = {
+    this.query = ({
       ...this.query,
       criteria: {
         ...this.query.criteria,
@@ -53,7 +53,7 @@ export default class WithCriteriaQuery extends Query {
         limit: opts.limit,
         offset: opts.offset
       }
-    };
+    } as any);
 
     if(opts.ids || opts.id) {
       this.query = this.matchingIdOrIds(opts.ids || opts.id).query;
@@ -108,10 +108,10 @@ export default class WithCriteriaQuery extends Query {
 
     if(Array.isArray(idOrIds)) {
       res = this.andWhere(
-        FieldExp(
+        (FieldExp(
           "in",
           [Identifier("id"), idOrIds.map(String)]
-        )
+        ) as any)
       );
     }
 
@@ -120,7 +120,7 @@ export default class WithCriteriaQuery extends Query {
         FieldExp(
           "eq",
           [Identifier("id"), String(idOrIds)]
-        )
+        ) as any
       );
 
       res.query = {
@@ -155,7 +155,7 @@ export default class WithCriteriaQuery extends Query {
         ...res.query.criteria,
         where: FieldExp("and", [])
       }
-    };
+    } as any;
 
     return res;
   }
@@ -168,7 +168,7 @@ export default class WithCriteriaQuery extends Query {
     const filters = this.query.criteria.where.args;
     return (
       filters.length === 1 &&
-      isId(filters[0].args[0]) && filters[0].args[0].value === "id" &&
+      isId(filters[0].value) && filters[0].field === "id" &&
       (filters[0].operator === "eq" || filters[0].operator === "in")
     );
   }

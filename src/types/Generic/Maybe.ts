@@ -35,7 +35,7 @@ export class Just<T> {
   }
 
   map<U>(transform: (v: T) => U | undefined): Maybe<U> {
-    return Maybe(transform(this.val));
+    return MaybeFn(transform(this.val));
   }
 
   bind<U>(transform: (v: T) => Maybe<U> | U | undefined): Maybe<U> {
@@ -46,13 +46,13 @@ export class Just<T> {
     }
 
     else {
-      return Maybe(transformed);
+      return MaybeFn(transformed);
     }
   }
 }
 
 const NOTHING = new Nothing<any>();
-export default function Maybe<T>(x: T | undefined): Maybe<T> {
+export default function MaybeFn<T>(x: T | undefined): Maybe<T> {
   // Sometimes, null is a valid value, so we only make undefined into Nothing.
   return x !== undefined ? new Just(x) : (NOTHING as Nothing<T>);
 }

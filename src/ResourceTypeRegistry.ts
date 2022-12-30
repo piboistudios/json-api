@@ -340,7 +340,7 @@ export default class ResourceTypeRegistry {
     return Maybe(this._types[typeName])
       .map(it => it.get(attrName))
       .map(it => it instanceof Immutable.Map || it instanceof Immutable.List
-        ? it.toJS()
+        ? (it as Immutable.List<T>).toJS()
         : it
       )
       .getOrDefault(undefined);

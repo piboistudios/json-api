@@ -1,14 +1,14 @@
 import R = require("ramda");
 import {
-   Request, FinalizedRequest, Result, HTTPResponse,
-   ServerReq, ServerRes,
-   ParsedFilterParam,
-   ParsedSortParam,
-   makeDocument,
-   ErrorOrErrorArray,
-   SupportedOperators,
-   FinalizedSupportedOperators,
-   ParserOperatorsConfig
+  Request, FinalizedRequest, Result, HTTPResponse,
+  ServerReq, ServerRes,
+  ParsedFilterParam,
+  ParsedSortParam,
+  makeDocument,
+  ErrorOrErrorArray,
+  SupportedOperators,
+  FinalizedSupportedOperators,
+  ParserOperatorsConfig
 } from "../types";
 import ResourceTypeRegistry from "../ResourceTypeRegistry";
 import Document, { DocumentData, DocTransformFn } from "../types/Document";
@@ -159,7 +159,7 @@ export default class APIController {
           request.queryParams,
           { method: request.method, uri: request.uri }
         );
-      } catch (e) {
+      } catch (e: any) {
         throw Errors.invalidQueryParamValue({
           detail: `Invalid ${paramName} syntax: ${e.message} See jsonapi.js.org for details.`,
           source: { parameter: paramName }
@@ -208,7 +208,7 @@ export default class APIController {
       document: undefined
     };
 
-    if(request.body !== undefined) {
+    if (request.body !== undefined) {
       const parsedPrimary = await (async () => {
         await validateContentType(request, (<any>this.constructor).supportedExt);
         await validateRequestDocument(request.body);
@@ -218,20 +218,20 @@ export default class APIController {
       finalizedRequest.document = this.makeDoc({
         primary: parseAsLinkage(request)
           ? (isBulkDelete(request)
-              ? ResourceIdentifierSet.of({
-                  data: parsedPrimary as Data<ResourceIdentifier>
-                })
-              : Relationship.of({
-                  data: parsedPrimary as Data<ResourceIdentifier>,
-                  owner: {
-                    type: <string>request.type,
-                    id: <string>request.id,
-                    path: <string>request.relationship
-                  }
-                }))
+            ? ResourceIdentifierSet.of({
+              data: parsedPrimary as Data<ResourceIdentifier>
+            })
+            : Relationship.of({
+              data: parsedPrimary as Data<ResourceIdentifier>,
+              owner: {
+                type: <string>request.type,
+                id: <string>request.id,
+                path: <string>request.relationship
+              }
+            }))
           : ResourceSet.of({
-              data: parsedPrimary as Data<Resource>
-            }),
+            data: parsedPrimary as Data<Resource>
+          }),
         meta: request.body.meta
       });
     }
@@ -252,7 +252,7 @@ export default class APIController {
     // (even if no filters are in use).
     const typeDesc = this.registry.type(request.type);
 
-    if(!typeDesc) {
+    if (!typeDesc) {
       return { filter: {}, sort: {} };
     }
 
@@ -278,13 +278,13 @@ export default class APIController {
     await requestValidators.checkMethod(request);
     await requestValidators.checkBodyExistence(request);
 
-    if(request.document && request.document.primary) {
-      if(!parseAsLinkage(request)) {
+    if (request.document && request.document.primary) {
+      if (!parseAsLinkage(request)) {
         // We're assuming, for some of the calls below, that we'll only get
         // full resources on a patch (an update) or a post (for create) request.
         // If that's not true somehow, throw now so we don't run into trouble
         // with letting users set types they shouldn't be able to.
-        if(!['post', 'patch'].includes(request.method)) {
+        if (!['post', 'patch'].includes(request.method)) {
           throw new Error("Unexpected method.");
         }
 
@@ -298,7 +298,7 @@ export default class APIController {
         // to patch have `id` keys. This must be guaranteed before we use
         // setResourceTypesList and tell it to look up the type/id in the db.
         // This is already ensured on bulk delete by basic linkage parsing rules.
-        if(request.method === 'patch') {
+        if (request.method === 'patch') {
           await validateRequestResourceIds(request.document.primary as ResourceSet);
         }
 
@@ -324,7 +324,7 @@ export default class APIController {
       // On bulk deletes, we don't set the typePath (that's unnecessary overhead),
       // but we should verify that the resources the identifiers are refering to
       // are using the right json-api `type` key.
-      if(isBulkDelete(request)) {
+      if (isBulkDelete(request)) {
         await validateRequestResourceTypes(
           request.type,
           request.document.primary as ResourceSet,
@@ -345,7 +345,7 @@ export default class APIController {
     }
 
     const baseQuery = await (async () => {
-      switch(<"get" | "post" | "patch" | "delete">request.method) {
+      switch (<"get" | "post" | "patch" | "delete">request.method) {
         case "get":
           return makeGET(requestAfterBeforeSave, opts.registry, opts.makeDocument)
         case "post":
@@ -427,7 +427,7 @@ export default class APIController {
         await opts.runQuery(query).then(query.returning, query.catch);
 
       // add top level self link pre send.
-      if(result.document && result.document.primary) {
+      if (result.document && result.document.primary) {
         result.document.primary.links = {
           "self": () => opts.request.uri,
           ...result.document.primary.links
@@ -435,7 +435,7 @@ export default class APIController {
       }
 
       return result;
-    } catch(err) {
+    } catch (err: any) {
       return makeResultFromErrors(opts.makeDocument, err);
     }
   }
@@ -538,7 +538,8 @@ export default class APIController {
     }
 
     // If an error occurred, (e.g., parsing the request) convert it to a Result.
-    catch (err) {
+    catch (_err: any) {
+      const err = _err as any;
       logger.warn("API Controller caught error", err, err.stack);
       jsonAPIResult = makeResultFromErrors(this.makeDoc, err);
     }
@@ -592,7 +593,7 @@ export default class APIController {
       return resultToHTTPResponse(result, contentType);
     }
 
-    catch (e) {
+    catch (e: any) {
       // If we allow406, replace result with the 406 error message.
       const finalResult = allow406
         ? makeResultFromErrors((data: DocumentData) => new Document(data), e)
@@ -607,7 +608,7 @@ export default class APIController {
 
 export function defaultFilterParamParser(
   filterOps: ParserOperatorsConfig,
-  rawQuery: string | undefined
+  rawQuery: any
 ) {
   return getQueryParamValue("filter", rawQuery)
     .map(it => parseFilter(it, filterOps))
@@ -616,7 +617,7 @@ export function defaultFilterParamParser(
 
 export function defaultSortParamParser(
   sortOps: ParserOperatorsConfig,
-  rawQuery: string | undefined
+  rawQuery: any
 ) {
   return getQueryParamValue("sort", rawQuery)
     .map(it => parseSort(it, sortOps))
@@ -642,11 +643,11 @@ function makeResultFromErrors(makeDoc: makeDocument, errors: ErrorOrErrorArray):
 
 function resultToHTTPResponse(response: Result, negotiatedMediaType?: string): HTTPResponse {
   const status = (() => {
-    if(response.status) {
+    if (response.status) {
       return response.status;
     }
 
-    if(response.document) {
+    if (response.document) {
       return response.document.errors
         ? pickStatus(response.document.errors.map(it => Number(it.status)))
         : 200
@@ -661,7 +662,7 @@ function resultToHTTPResponse(response: Result, negotiatedMediaType?: string): H
     // could be negotiated.
     ...(status !== 204
       ? { 'content-type': negotiatedMediaType || "application/vnd.api+json" }
-      : { }
+      : {}
     ),
 
     // No matter what, though, we're varying on Accept. See:

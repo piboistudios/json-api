@@ -22,18 +22,18 @@ export type RunnableQuery =
 // using function overload signatures below, so we can reuse it in the API controller.
 export type QueryReturning<T extends RunnableQuery> =
   T extends FindQuery ? FindReturning :
-    (T extends CreateQuery ? CreationReturning :
-      (T extends UpdateQuery ? UpdateReturning :
-        (T extends DeleteQuery ? DeletionReturning :
-          (T extends AddToRelationshipQuery ? RelationshipUpdateReturning :
-            (T extends RemoveFromRelationshipQuery ? RelationshipUpdateReturning : never)))));
+  (T extends CreateQuery ? CreationReturning :
+    (T extends UpdateQuery ? UpdateReturning :
+      (T extends DeleteQuery ? DeletionReturning :
+        (T extends AddToRelationshipQuery ? RelationshipUpdateReturning :
+          (T extends RemoveFromRelationshipQuery ? RelationshipUpdateReturning : never)))));
 
-function runQuery<T extends RunnableQuery>(registry: ResourceTypeRegistry, query: T): Promise<QueryReturning<T>> {
+function runQuery<T extends RunnableQuery>(registry: ResourceTypeRegistry, query: T): any {
   const typeDesc = registry.type(query.type);
 
   // If the type in the query hasn't been registered,
   // we can't look up it's adapter to run the query, so we 404.
-  if(!typeDesc) {
+  if (!typeDesc) {
     throw unknownResourceType({
       detail: `${query.type} is not a known type in this API.`
     });
@@ -41,7 +41,7 @@ function runQuery<T extends RunnableQuery>(registry: ResourceTypeRegistry, query
 
   const finalQuery = finalizeQuery(registry, query);
   const adapter = typeDesc.dbAdapter;
-  const method = (
+  const method:any = (
     (finalQuery instanceof CreateQuery && adapter.create) ||
     (finalQuery instanceof FindQuery && adapter.find) ||
     (finalQuery instanceof DeleteQuery && adapter.delete) ||
@@ -63,7 +63,7 @@ function runQuery<T extends RunnableQuery>(registry: ResourceTypeRegistry, query
  */
 function finalizeQuery(registry: ResourceTypeRegistry, query: Query) {
   // Enforce max limit if necessary (only for FindQuery's atm).
-  if(!(query instanceof FindQuery)) {
+  if (!(query instanceof FindQuery)) {
     return query
   }
 
@@ -75,8 +75,8 @@ function finalizeQuery(registry: ResourceTypeRegistry, query: Query) {
   const { ignoreLimitMax } = query;
   const { maxPageSize } = typeDesc.pagination;
 
-  if(typeof maxPageSize === 'number' && !ignoreLimitMax) {
-    if(typeof limit === 'undefined') {
+  if (typeof maxPageSize === 'number' && !ignoreLimitMax) {
+    if (typeof limit === 'undefined') {
       limit = maxPageSize;
     }
 

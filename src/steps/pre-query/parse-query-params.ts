@@ -6,7 +6,7 @@ import {
 import * as Errors from '../../util/errors';
 import { isValidMemberName } from "../../util/json-api";
 import {
-  Sort,
+  // Sort,
   Identifier as IdentifierType,
   ParserOperatorsConfig,
   FieldExpression as FieldExprType
@@ -40,7 +40,7 @@ export type ParsedStandardQueryParams = {
   [paramName: string]: any;
 };
 
-export default function(params: RawParams, rawQueryString: string | undefined): ParsedStandardQueryParams {
+export default function(params: RawParams, rawQueryString: any): ParsedStandardQueryParams {
   const paramsToParserFns = {
     page: R.pipe(
       R.partial(parseScopedParam, ["page"]),
@@ -119,16 +119,16 @@ function parseCommaSeparatedParamString(paramName: string, encodedString: string
 }
 
 export function parseSort(
-  rawSortString: string,
-  sortOperators: ParserOperatorsConfig
-): Sort[] {
+  rawSortString: any,
+  sortOperators: any
+): any[] {
   return underlyingSortParser(sortOperators, rawSortString);
 }
 
 export function parseFilter(
   rawFilterString: string,
   filterOperators: ParserOperatorsConfig
-): FieldExprType[] {
+): any[] {
   // Our default parser falls back to eq operator
   // for two item field expressions, so it must be supported
   // (but only if we have a filter query string).
