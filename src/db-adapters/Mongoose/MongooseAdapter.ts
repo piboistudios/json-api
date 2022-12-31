@@ -472,7 +472,7 @@ export default class MongooseAdapter implements Adapter<any> {
     // criteria. Atm, though, json-api only supports delete by id(s). And, below,
     // we assume that ids are the only criteria in use, e.g., when we check the
     // length of the result set. So, throw if that assumption doesn't hold.
-    if (!query.isSimpleIdQuery()) {
+    if (!query.isSingular && !query.isSimpleIdQuery()) {
       throw new Error("Unsupported delete query");
     }
 
